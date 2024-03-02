@@ -13,15 +13,17 @@
 // limitations under the License.
 
 
-const registryRegex = /(@[a-zA-Z0-9-*~][a-zA-Z0-9-*._~]*:)?registry=https:(\/\/[a-zA-Z0-9-]+[-]npm[.]pkg[.]dev\/.*\/)/;
-const authTokenRegex = /(\/\/[a-zA-Z0-9-]+[-]npm[.]pkg[.]dev\/.*\/):_authToken=(.*)/;
-const passwordRegex = /(\/\/[a-zA-Z0-9-]+[-]npm[.]pkg[.]dev\/.*\/):_password=(.*)/;
+const registryRegex = /(@[a-zA-Z0-9-*~][a-zA-Z0-9-*._~]*:)?registry=https:(\/\/*\/)/;
+const authTokenRegex = /(\/\/.*\/):_authToken=(.*)/;
+const passwordRegex = /(\/\/.*\/):_password=(.*)/;
+const userAndPasswordRegex = /https:\/\/(.*):(.*)@(.*)/;
 
 const configType = {
   Default: "Default",
   Registry: "Registry",
   AuthToken: "AuthToken",
   Password: "Password",
+  UrlPassword: "UrlPassword",
 }
 
 function parseConfig(text) {
@@ -55,6 +57,18 @@ function parseConfig(text) {
       password: m[2],
       toString: function() {
         return `${this.registry}:_password=${this.password}`;
+      }
+    }
+  }
+  m = text.match(userAndPasswordRegex);
+  if (m) {
+    return {
+      type: configType.UrlPassword,
+      registry: m[3],
+      username: m[1],
+      password: m[2],
+      toString: function() {
+        return `https:\/\/${this.username}:${this.password}@${this.registry}`;
       }
     }
   }

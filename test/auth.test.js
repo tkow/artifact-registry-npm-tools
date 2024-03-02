@@ -14,14 +14,10 @@
  * limitations under the License.
  */
 const assert = require('assert');
-const fs = require('fs');
 const os = require('os');
 const path = require('path');
 const rewire = require("rewire");
 var artifactRegistryAuth = rewire('../src/auth');
-var update = rewire('../src/update');
-
-const creds = 'abcd';
 
 function getTestDir(test) {
   return path.join(os.tmpdir(), test);

@@ -1,32 +1,23 @@
 #!/usr/bin/env node
+// @ts-check
 
-// Copyright 2019 Google LLC
-//
-// Licensed under the Apache License, Version 2.0 (the "License");
-// you may not use this file except in compliance with the License.
-// You may obtain a copy of the License at
-//
-//      http://www.apache.org/licenses/LICENSE-2.0
-//
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
-
+// @ts-ignore
 const os = require('os');
+// @ts-ignore
 const yargs = require('yargs/yargs')
+// @ts-ignore
 const { hideBin } = require('yargs/helpers')
 const auth = require('./auth');
 const { logger } = require('./logger');
 const update = require('./update');
+// @ts-ignore
 const fs = require('fs');
 
 /**
  * Determine which npmrc file should be the default repo configuration
- * 
+ *
  * This will determine if a project-level npmrc file exists, otherwise default to the user-level npmrc file
- * 
+ *
  * return {!Promise<String>}
  */
  async function determineDefaultRepoConfig() {
@@ -53,44 +44,38 @@ const fs = require('fs');
  */
 async function main() {
   try {
+    // @ts-ignore
     const allArgs = yargs(hideBin(process.argv))
-      .command('$0 [config]', 'Refresh the tokens for .npmrc config file', (yargs) => {
-        yargs.positional('config', {
-          type: 'string',
-          describe: '(Deprecated) Path to the .npmrc file to update auth tokens',
-        })
-      })
       .option('repo-config', {
         type: 'string',
         describe: 'Path to the .npmrc file to read registry configs from, will use the project-level npmrc file if it exists, otherwise the user-level npmrc file',
         default: await determineDefaultRepoConfig(),
       })
-      .option('credential-config', {
+      .option('from', {
         type: 'string',
-        describe: 'Path to the .npmrc file to write credentials to, usually the user-level npmrc file',
-        default: `${os.homedir()}/.npmrc`,
+        describe: 'Path to the original bunfig for version control without credential, usually the project-level bunfig file',
+        default: `${os.homedir()}/bunfig.toml`,
       })
-      .option('verbose', {
-        type: 'boolean',
-        describe: 'Set log level to verbose',
-        default: false,
+      .option('bunfig', {
+        type: 'string',
+        describe: 'Path to the bunfig.file file to append repository and credential and output, usually the project-level path',
+        default: `${os.homedir()}/bunfig.toml`,
       })
       .help()
       .argv;
 
     logger.logVerbose = allArgs.verbose;
-    const configPath = allArgs.config;
     const creds = await auth.getCreds();
-    if (configPath) {
-      console.warn('Updating project .npmrc inline is deprecated and may no longer be supported\n'
-          + 'in future versions. Run the plugin with `--repo-config` and `--credential-config`.');
-      await update.updateConfigFile(configPath, creds);
-    } else {
-      await update.updateConfigFiles(allArgs.repoConfig, allArgs.credentialConfig, creds);
-    }
+    await update.generateBunfigFile(
+      allArgs.repoConfig,
+      allArgs.from,
+      allArgs.bunfig,
+      creds,
+    );
     console.log("Success!");
   } catch (err) {
     console.error(err);
+    // @ts-ignore
     process.exit(1);
   }
 }
