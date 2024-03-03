@@ -12,6 +12,7 @@ const { logger } = require('./logger');
 const update = require('./update');
 // @ts-ignore
 const fs = require('fs');
+const path = require('path');
 
 /**
  * Determine which npmrc file should be the default repo configuration
@@ -44,6 +45,7 @@ const fs = require('fs');
  */
 async function main() {
   try {
+    const defaultBunfigToml = path.join(process.cwd(),`bunfig.toml`)
     // @ts-ignore
     const allArgs = yargs(hideBin(process.argv))
       .option('repo-config', {
@@ -54,12 +56,12 @@ async function main() {
       .option('from', {
         type: 'string',
         describe: 'Path to the original bunfig for version control without credential, usually the project-level bunfig file',
-        default: `${os.homedir()}/bunfig.toml`,
+        default: defaultBunfigToml,
       })
       .option('bunfig', {
         type: 'string',
         describe: 'Path to the bunfig.file file to append repository and credential and output, usually the project-level path',
-        default: `${os.homedir()}/bunfig.toml`,
+        default: defaultBunfigToml,
       })
       .help()
       .argv;

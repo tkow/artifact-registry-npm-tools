@@ -5,6 +5,9 @@
   "main": "./src/main.js",
   "repository": "tkow/artifact-registry-npm-tools",
   "author": "tkow",
+  "files": [
+    "src"
+  ],
   "license": "Apache-2.0",
   "dependencies": {
     "@iarna/toml": "^2.2.5",
