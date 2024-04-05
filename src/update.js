@@ -13,40 +13,40 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-const fs = require('fs');
-const path = require('path');
-const c = require('./config');
+const fs = require("fs");
+const path = require("path");
+const c = require("./config");
 // @ts-ignore
-const {parse: parseToml} = require('@iarna/toml');
-const stringifyToToml = require('./to-toml');
+const { parse: parseToml } = require("@iarna/toml");
+const stringifyToToml = require("./to-toml");
 // @ts-ignore
 const BUN_INSTALL_CONFIG_ID = "install";
 const BUN_INSTALL_SCOPE_CONFIG_ID = "scopes";
 const BUN_REGISTRY_KEY = "registry";
-const matchArtifactRegistryRegex = /[a-zA-Z0-9-]+[-]npm[.]pkg[.]dev\/.*\//
-
+const matchArtifactRegistryRegex = /[a-zA-Z0-9-]+[-]npm[.]pkg[.]dev\/.*\//;
 
 /**
  * @param {object} scopedConfig
-*/
+ */
 function validScopedValue(scopedConfig) {
-  const url = scopedConfig.url ||
+  const url =
+    scopedConfig.url ||
     (scopedConfig.registry ? `https://${scopedConfig.registry}` : undefined);
-  if(!url) {
-    throw new Error('url or registry is not found')
+  if (!url) {
+    throw new Error("url or registry is not found");
   }
-  if(
-    !['token'].some(key => {
+  if (
+    !["token"].some((key) => {
       return scopedConfig[key] === undefined;
     })
   ) {
     return {
       url,
       token: scopedConfig.token,
-    }
+    };
   }
-  if(
-    !['username', 'password'].some(key => {
+  if (
+    !["username", "password"].some((key) => {
       return scopedConfig[key] === undefined;
     })
   ) {
@@ -54,89 +54,91 @@ function validScopedValue(scopedConfig) {
       url,
       username: scopedConfig.username,
       password: scopedConfig.password,
-    }
+    };
   }
-  return url
+  return url;
 }
 
 /**
  * @param {object} scopedConfig
-*/
+ */
 function validUnscopedValue(scopedConfig) {
-  const url = scopedConfig.url ||
+  const url =
+    scopedConfig.url ||
     (scopedConfig.registry ? `https://${scopedConfig.registry}` : undefined);
-  if(!url) {
-    throw new Error('url or registry is not found')
+  if (!url) {
+    throw new Error("url or registry is not found");
   }
-  if(
-    !['token'].some(key => {
+  if (
+    !["token"].some((key) => {
       return scopedConfig[key] === undefined;
     })
   ) {
     return {
       url,
       token: scopedConfig.token,
-    }
+    };
   }
-  if(
-    !['username', 'password', 'registry'].some(key => {
+  if (
+    !["username", "password", "registry"].some((key) => {
       return scopedConfig[key] === undefined;
     })
   ) {
-    return `https://${scopedConfig.username}:${scopedConfig.password}@${scopedConfig.registry}`
+    return `https://${scopedConfig.username}:${scopedConfig.password}@${scopedConfig.registry}`;
   }
-  return url
+  return url;
 }
 
 /**
  * @param {object} bunfig Path to the npmrc file to read scope registry configs, should be the project npmrc filecreds
  * @param {object} parsedParams original bunfig path.
-*/
+ */
 function setData(bunfig, parsedParams) {
-  if(!bunfig[BUN_INSTALL_CONFIG_ID]) {
-    bunfig[BUN_INSTALL_CONFIG_ID] = {}
+  if (!bunfig[BUN_INSTALL_CONFIG_ID]) {
+    bunfig[BUN_INSTALL_CONFIG_ID] = {};
   }
 
-  if(parsedParams.scope){
-
-    if(!bunfig[BUN_INSTALL_CONFIG_ID][BUN_INSTALL_SCOPE_CONFIG_ID]) {
-      bunfig[BUN_INSTALL_CONFIG_ID][BUN_INSTALL_SCOPE_CONFIG_ID] = {}
+  if (parsedParams.scope) {
+    if (!bunfig[BUN_INSTALL_CONFIG_ID][BUN_INSTALL_SCOPE_CONFIG_ID]) {
+      bunfig[BUN_INSTALL_CONFIG_ID][BUN_INSTALL_SCOPE_CONFIG_ID] = {};
     }
 
-    bunfig[BUN_INSTALL_CONFIG_ID][BUN_INSTALL_SCOPE_CONFIG_ID][parsedParams.scope] = validScopedValue(parsedParams)
-    return bunfig
+    bunfig[BUN_INSTALL_CONFIG_ID][BUN_INSTALL_SCOPE_CONFIG_ID][
+      parsedParams.scope
+    ] = validScopedValue(parsedParams);
+    return bunfig;
   }
 
-  bunfig[BUN_INSTALL_CONFIG_ID][BUN_REGISTRY_KEY] = validUnscopedValue(parsedParams)
-  return bunfig
+  bunfig[BUN_INSTALL_CONFIG_ID][BUN_REGISTRY_KEY] =
+    validUnscopedValue(parsedParams);
+  return bunfig;
 }
 
 /**
  * @param {string} line Path to the npmrc file to read scope registry configs, should be the project npmrc file.
  * @param {object} cache original bunfig path.
-*/
+ */
 function parseLine(line, cache) {
-  let {type, toString, ...config} = c.parseConfig(line.trim());
+  let { type, toString, ...config } = c.parseConfig(line.trim());
 
   // @ts-ignore
-  if(config.scope) {
+  if (config.scope) {
     // @ts-ignore
-    if(!cache[config.scope]) {
+    if (!cache[config.scope]) {
       // @ts-ignore
-      cache[config.scope] = {}
+      cache[config.scope] = {};
     }
     // @ts-ignore
-    cache[config.scope] = Object.assign(cache[config.scope], config)
+    cache[config.scope] = Object.assign(cache[config.scope], config);
   } else {
-    if(!cache[BUN_REGISTRY_KEY]) {
+    if (!cache[BUN_REGISTRY_KEY]) {
       // @ts-ignore
-      cache[BUN_REGISTRY_KEY] = {}
+      cache[BUN_REGISTRY_KEY] = {};
     }
-    cache[BUN_REGISTRY_KEY] = Object.assign(cache[BUN_REGISTRY_KEY], config)
+    cache[BUN_REGISTRY_KEY] = Object.assign(cache[BUN_REGISTRY_KEY], config);
   }
-  return cache
+  return cache;
 }
-
 
 /**
  * Update the project and user npmrc files.
@@ -151,31 +153,39 @@ async function generateBunfigFile(npmrcFile, from, bunfigPath, creds) {
   npmrcFile = path.resolve(npmrcFile);
 
   // We do not use basic auth any more in `gcloud artifacts print-settings`; replace them.
-  let npmrcFileLines = await fs.promises.readFile(npmrcFile, "utf8")
-  const legacyRegex = /(\/\/[a-zA-Z1-9-]+[-]npm[.]pkg[.]dev\/.*\/):_password=.*(\n\/\/[a-zA-Z1-9-]+[-]npm[.]pkg[.]dev\/.*\/:username=oauth2accesstoken)/g;
-  npmrcFileLines = npmrcFileLines.replace(legacyRegex, `$1:_authToken=${creds}`)
+  let npmrcFileLines = await fs.promises.readFile(npmrcFile, "utf8");
+  const legacyRegex =
+    /(\/\/[a-zA-Z1-9-]+[-]npm[.]pkg[.]dev\/.*\/):_password=.*(\n\/\/[a-zA-Z1-9-]+[-]npm[.]pkg[.]dev\/.*\/:username=oauth2accesstoken)/g;
+  npmrcFileLines = npmrcFileLines.replace(
+    legacyRegex,
+    `$1:_authToken=${creds}`
+  );
 
   from = path.resolve(from);
 
-  let bunfigOutObj = fs.existsSync(from) ?  parseToml(fs.readFileSync(from, "utf8")) : {};
+  let bunfigOutObj = fs.existsSync(from)
+    ? parseToml(fs.readFileSync(from, "utf8"))
+    : {};
 
-  let appendedInstallConfig = {}
+  let appendedInstallConfig = {};
 
-  for (const line of npmrcFileLines.split('\n')) {
-    appendedInstallConfig = parseLine(line, appendedInstallConfig)
+  for (const line of npmrcFileLines.split("\n")) {
+    appendedInstallConfig = parseLine(line, appendedInstallConfig);
   }
   for (const value of Object.values(appendedInstallConfig)) {
     // @ts-ignore
-    if((value.url || value.registry || '').match(matchArtifactRegistryRegex)) {
+    if ((value.url || value.registry || "").match(matchArtifactRegistryRegex)) {
       // @ts-ignore
-      value.token = creds
+      value.token = creds;
     }
-    bunfigOutObj = setData(bunfigOutObj, value)
+    bunfigOutObj = setData(bunfigOutObj, value);
   }
 
   bunfigPath = path.resolve(bunfigPath);
+  const outString = stringifyToToml(bunfigOutObj);
+  console.log(outString);
   // @ts-ignore
-  await fs.promises.writeFile(bunfigPath, stringifyToToml(bunfigOutObj));
+  await fs.promises.writeFile(bunfigPath, outString);
 }
 
 module.exports = {

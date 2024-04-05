@@ -8,6 +8,7 @@ const yargs = require('yargs/yargs')
 // @ts-ignore
 const { hideBin } = require('yargs/helpers')
 const auth = require('./auth');
+// @ts-ignore
 const { logger } = require('./logger');
 const update = require('./update');
 // @ts-ignore
@@ -36,7 +37,7 @@ const path = require('path');
  * Usage:
  * - Add to scripts in package.json:
  * "scripts": {
- *   "artifactregistry-auth": "google-artifactregistry-auth --repo-config=[./.npmrc] --credential-config=[~/.npmrc]",
+ *   "artifactregistry-auth": "bun-google-artifactregistry-auth --repo-config=[./.npmrc] --credential-config=[~/.npmrc]",
  *    ...
  * },
  * - Or run directly $ ./src/main.js --repo-config=[./.npmrc] --credential-config=[~/.npmrc]
@@ -45,9 +46,9 @@ const path = require('path');
  */
 async function main() {
   try {
-    const defaultBunfigToml = path.join(process.cwd(),`bunfig.toml`)
+    const defaultBunfigToml = `${os.homedir()}/.bunfig.toml`
     // @ts-ignore
-    const allArgs = yargs(hideBin(process.argv))
+    const allArgs = await  yargs(hideBin(process.argv))
       .option('repo-config', {
         type: 'string',
         describe: 'Path to the .npmrc file to read registry configs from, will use the project-level npmrc file if it exists, otherwise the user-level npmrc file',
@@ -66,6 +67,7 @@ async function main() {
       .help()
       .argv;
 
+    // @ts-ignore
     logger.logVerbose = allArgs.verbose;
     const creds = await auth.getCreds();
     await update.generateBunfigFile(

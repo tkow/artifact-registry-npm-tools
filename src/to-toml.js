@@ -1,417 +1,267 @@
 // https://bun.sh/docs/runtime/bunfig
 // @ts-check
-'use strict'
-module.exports = stringify
-module.exports.value = stringifyInline
+"use strict";
+module.exports = stringify;
 
-const definitios = [
-  ['preload', [String]],
-  ['jsx', String],
-  ['smol', Boolean],
-  ['logLevel', String],
-  ['define', {type: 'Table'}],
-  ['loader', {type: 'Table'}],
-  ['telemetry', Boolean],
-  ['test', {type: 'Table'}],
-  ['test.root', String],
-  ['test.preload', [String]],
-  ['test.smol', Boolean],
-  ['test.coverage', Boolean],
-  ['test.coverageThreshold', Number],
-  ['test.coverageSkipTestFiles', Boolean],
-  ['install', {type: 'Table'}],
-  ['install.optional', Boolean],
-  ['install.dev', Boolean],
-  ['install.peer', Boolean],
-  ['install.production', Boolean],
-  ['install.exact', Boolean],
-  ['install.auto', String],
-  ['install.frozenLockfile', Boolean],
-  ['install.dryRun', Boolean],
-  ['install.globalDir', String],
-  ['install.globalBinDir', String],
-  ['install.registry',
-    {
-      type: 'OneOf',
-      schema: [String, {
-        url: String,
-        token: String
-      }]
+const validate = require('jsonschema').validate
+const {logger} = require('./logger');
+
+const EOL = require("os").EOL;
+
+const bunSchema = {
+  preload: {
+    type: "array",
+    items: {
+      type: "string",
+    },
+  },
+  jsx: {
+    type: "string",
+  },
+  jsxFactory: {
+    type: "string",
+  },
+  jsxFragment: {
+    type: "string",
+  },
+  jsxImportSource: {
+    type: "string",
+  },
+  smol: {
+    type: "boolean",
+  },
+  logLevel: {
+    type: "boolean",
+  },
+  define: {
+    type: "object",
+    additionalProperties: {
+      type: "string"
     }
-  ],
-  ['install.scopes', {
-    type: 'Table',
-    schema: {
-      type: 'OneOf',
-      schema: [
-        String,
+  },
+  loader: {
+    type: "object",
+    additionalProperties: {
+      type: "string"
+    }
+  },
+  telemetry: {
+    type: "boolean",
+  },
+  test: {
+    type: "object",
+    properties: {
+      preload: {
+        type: "array",
+        items: {
+          type: "string",
+        },
+      },
+      smol: {
+        type: "boolean",
+      },
+      coverage: {
+        type: "boolean",
+      },
+      coverageThreshold: {
+        oneOf: [
+          { type: "number" },
+          {
+            type: "object",
+            properties: {
+              line: { type: "number" },
+              function: { type: "number" },
+              statement: { type: "number" },
+            },
+          },
+        ],
+      },
+    },
+    coverageSkipTestFiles: {
+      type: "boolean",
+    },
+  },
+  install: {
+    type: "object",
+    properties: {
+      optional: {
+        type: "boolean",
+      },
+      dev: {
+        type: "boolean",
+      },
+      peer: {
+        type: "boolean",
+      },
+      production: {
+        type: "boolean",
+      },
+      exact: {
+        type: "boolean",
+      },
+      auto: { type: "string" },
+      frozenLockfile: {
+        type: "boolean",
+      },
+      dryRun: {
+        type: "boolean",
+      },
+      globalDir: { type: "string" },
+      globalBinDir: { type: "string" },
+      registry: {
+        oneOf: [
+          { type: "string" },
+          {
+            type: "object",
+            properties: {
+              url: { type: "string" },
+              token: { type: "string" },
+            },
+          },
+        ],
+      },
+    },
+  },
+  "install.scopes": {
+    type: "object",
+    additionalProperties: {
+      oneOf: [
+        { type: 'string' },
         {
-          url: String,
-          token: String
+          type: "object",
+          properties: {
+            url: { type: "string" },
+            token: { type: "string" },
+          },
+          required: ['url', 'token']
         },
         {
-          url: String,
-          username: String,
-          password: String
+          type: "object",
+          properties: {
+            url: { type: "string" },
+            username: { type: "string" },
+            password: { type: "string" },
+          },
+          required: ['url', 'username', 'password']
+        },
+      ],
+    }
+  },
+  "install.cache": {
+    type: "object",
+    properties: {
+      dir: { type: "string" },
+      disable: {
+        type: "boolean",
+      },
+      disableManifest: {
+        type: "boolean",
+      },
+    },
+  },
+  "install.lockfile": {
+    type: "object",
+    properties: {
+      save: {
+        type: "boolean",
+      },
+      print: { type: "string" },
+    },
+  },
+  run: {
+    type: "object",
+    properties: {
+      shell: { type: "string" },
+      bun: {
+        type: "boolean",
+      },
+      silent: {
+        type: "boolean",
+      },
+    },
+  },
+};
+
+
+/**
+ * Description
+ * @param {string} key
+ * @param {any} value
+ * @returns {Array<string>}
+ */
+function writeTomlLine(key, value, valueType) {
+  const sanitizedKey = ['@'].some(s => key.includes(s)) ? `"${key}"` : key
+  if(Array.isArray(value)) {
+    return [`${sanitizedKey} = ${JSON.stringify(value)}`]
+  }
+  if(typeof value === "object") {
+    const serializedValue = Object.entries(value).map(([k, v]) => { return writeTomlLine(k , v, valueType)}).join(', ')
+    const keyString = `${sanitizedKey} = { ${serializedValue} }`
+    return [keyString]
+  }
+  if(typeof value === "string") {
+    return [`${sanitizedKey} = "${value}"`]
+  }
+  return [`${sanitizedKey} = ${value}`]
+}
+
+/**
+ * Description
+ * @param {object} obj
+ * @param {string} key
+ * @param {any} valueType
+ * @returns {string | undefined}
+ */
+function stringifyByNode(obj, key, valueType) {
+  const keys = key.split(".");
+  const accessData = keys.reduce((current, accessKey) => {
+    if (!current) return current;
+    return current[accessKey];
+  }, obj);
+
+  if (!accessData ) return;
+
+  if(!validate(accessData, valueType).valid) {
+    logger.warn(`key: ${key} has invalid value and skipped: ${JSON.stringify(accessData, null, 2)}`)
+    return
+  }
+
+  let concatString = [];
+
+  if (valueType.type === "object") {
+    concatString.push(EOL);
+    concatString.push(`[${key}]`);
+
+    if('properties' in valueType)  {
+      Object.keys(valueType.properties).forEach((k) => {
+        if(typeof accessData[k] !== 'undefined') {
+          concatString = concatString.concat(writeTomlLine(k, accessData[k], valueType))
         }
-      ]
-    }
-  }],
-  ['install.cache', {
-    type: 'Table',
-  }],
-  ['install.cache.dir', String],
-  ['install.cache.disable', Boolean],
-  ['install.cache.disableManifest', Boolean],
-  ['install.lockfile',
-    {
-      type: 'Table',
-    }
-  ],
-  ['install.lockfile.save', Boolean],
-  ['install.lockfile.pritnt', String],
-]
-
-function parseValue(key, accessData, nodeType) {
-  const analyzedType = nodeType?.type || nodeType
-  switch(analyzedType) {
-    case 'Table':
-      if(nodeType.schema) {
-        const schemas = Array.isArray(nodeType.schema) ? nodeType.schema : [nodeType.schema]
-        const valStr = schemas.reduce((current, schema)=> {
-          if(current) return current
-          if(typeof accessData === schema?.name?.toLowerCase()) {
-            return schema(accessData)
-          } else if(typeof schema === 'object') {
-            const objectStr = Object.entries(schema).map(([key, value]) => {
-
-            })
-          }
-          return current
-        }, '')
-        return [`[${key}]`, valStr]
-      }
-      return [`[${key}]`]
-    case 'OneOf':
-      return accessData
-    default:
-      return JSON.stringify(accessData)
-  }
-}
-
-function stringifyByNode(obj, nodeDef) {
-  const [key, nodeType] = nodeDef
-  const accessData = key.split('.').reduce((current, accessKey) => {
-    if((current || typeof current === 'number' || typeof current === 'boolean') && current[accessKey]) {
-      return current[accessKey]
-    }
-    return current
-  }, obj)
-
-  if(accessData !== undefined) {
-    parseValue(key, accessData, nodeType)
-  }
-
-
-}
-
-function stringify (obj) {
-  let resultString = []
-  definitios.forEach(nodeDef => {
-    resultString = resultString.concat(stringifyByNode(obj, nodeDef))
-  })
-  return resultString.join('\n')
-}
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-// function stringify (obj) {
-//   if (obj === null) throw typeError('null')
-//   if (obj === void (0)) throw typeError('undefined')
-//   if (typeof obj !== 'object') throw typeError(typeof obj)
-
-//   if (typeof obj.toJSON === 'function') obj = obj.toJSON()
-//   if (obj == null) return null
-//   const type = tomlType(obj)
-//   if (type !== 'table') throw typeError(type)
-//   return stringifyObject('', '', obj)
-// }
-
-function typeError (type) {
-  return new Error('Can only stringify objects, not ' + type)
-}
-
-function getInlineKeys (obj) {
-  return Object.keys(obj).filter(key => isInline(obj[key]))
-}
-function getComplexKeys (obj) {
-  return Object.keys(obj).filter(key => !isInline(obj[key]))
-}
-
-function toJSON (obj) {
-  let nobj = Array.isArray(obj) ? [] : Object.prototype.hasOwnProperty.call(obj, '__proto__') ? {['__proto__']: undefined} : {}
-  for (let prop of Object.keys(obj)) {
-    if (obj[prop] && typeof obj[prop].toJSON === 'function' && !('toISOString' in obj[prop])) {
-      nobj[prop] = obj[prop].toJSON()
+      });
     } else {
-      nobj[prop] = obj[prop]
+      Object.entries(accessData).forEach(([k, v]) => {
+        concatString = concatString.concat(writeTomlLine(k, v, valueType))
+      });
     }
+    return concatString.join(EOL);
   }
-  return nobj
+
+  return concatString.concat(writeTomlLine(key, accessData, valueType)).join(EOL);
 }
 
-function stringifyObject (prefix, indent, obj) {
-  obj = toJSON(obj)
-  let inlineKeys
-  let complexKeys
-  inlineKeys = getInlineKeys(obj)
-  complexKeys = getComplexKeys(obj)
-  const result = []
-  const inlineIndent = indent || ''
-  inlineKeys.forEach(key => {
-    var type = tomlType(obj[key])
-    if (type !== 'undefined' && type !== 'null') {
-      result.push(inlineIndent + stringifyKey(key) + ' = ' + stringifyAnyInline(obj[key], true))
-    }
-  })
-  if (result.length > 0) result.push('')
-  const complexIndent = prefix && inlineKeys.length > 0 ? indent + '  ' : ''
-  complexKeys.forEach(key => {
-    result.push(stringifyComplex(prefix, complexIndent, key, obj[key]))
-  })
-  return result.join('\n')
-}
+/**
+ * Description
+ * @param {any} obj
+ * @returns {string}
+ */
+function stringify(obj) {
+  let resultString = [];
+  const topKeys = Object.entries(bunSchema);
 
-function isInline (value) {
-  switch (tomlType(value)) {
-    case 'undefined':
-    case 'null':
-    case 'integer':
+  for (const [key, valueType] of topKeys) {
     // @ts-ignore
-    case 'nan':
-    case 'float':
-    case 'boolean':
-    case 'string':
-    case 'datetime':
-      return true
-    case 'array':
-      return value.length === 0 || tomlType(value[0]) !== 'table'
-    case 'table':
-      return Object.keys(value).length === 0
-    /* istanbul ignore next */
-    default:
-      return false
+    resultString = resultString.concat([stringifyByNode(obj, key, valueType)]);
   }
-}
 
-function tomlType (value) {
-  if (value === undefined) {
-    return 'undefined'
-  } else if (value === null) {
-    return 'null'
-  /* eslint-disable valid-typeof */
-  } else if (typeof value === 'bigint' || (Number.isInteger(value) && !Object.is(value, -0))) {
-    return 'integer'
-  } else if (typeof value === 'number') {
-    return 'float'
-  } else if (typeof value === 'boolean') {
-    return 'boolean'
-  } else if (typeof value === 'string') {
-    return 'string'
-  } else if ('toISOString' in value) {
-    return isNaN(value) ? 'undefined' : 'datetime'
-  } else if (Array.isArray(value)) {
-    return 'array'
-  } else {
-    return 'table'
-  }
-}
-
-function stringifyKey (key) {
-  const keyStr = String(key)
-  if (/^[-A-Za-z0-9_]+$/.test(keyStr)) {
-    return keyStr
-  } else {
-    return stringifyBasicString(keyStr)
-  }
-}
-
-function stringifyBasicString (str) {
-  return '"' + escapeString(str).replace(/"/g, '\\"') + '"'
-}
-
-function stringifyLiteralString (str) {
-  return "'" + str + "'"
-}
-
-function numpad (num, str) {
-  while (str.length < num) str = '0' + str
-  return str
-}
-
-function escapeString (str) {
-  return str.replace(/\\/g, '\\\\')
-    .replace(/[\b]/g, '\\b')
-    .replace(/\t/g, '\\t')
-    .replace(/\n/g, '\\n')
-    .replace(/\f/g, '\\f')
-    .replace(/\r/g, '\\r')
-    /* eslint-disable no-control-regex */
-    .replace(/([\u0000-\u001f\u007f])/, c => '\\u' + numpad(4, c.codePointAt(0).toString(16)))
-    /* eslint-enable no-control-regex */
-}
-
-function stringifyMultilineString (str) {
-  let escaped = str.split(/\n/).map(str => {
-    return escapeString(str).replace(/"(?="")/g, '\\"')
-  }).join('\n')
-  if (escaped.slice(-1) === '"') escaped += '\\\n'
-  return '"""\n' + escaped + '"""'
-}
-
-function stringifyAnyInline (value, multilineOk) {
-  let type = tomlType(value)
-  if (type === 'string') {
-    if (multilineOk && /\n/.test(value)) {
-      type = 'string-multiline'
-    } else if (!/[\b\t\n\f\r']/.test(value) && /"/.test(value)) {
-      type = 'string-literal'
-    }
-  }
-  return stringifyInline(value, type)
-}
-
-function stringifyInline (value, type) {
-  /* istanbul ignore if */
-  if (!type) type = tomlType(value)
-  switch (type) {
-    case 'string-multiline':
-      return stringifyMultilineString(value)
-    case 'string':
-      return stringifyBasicString(value)
-    case 'string-literal':
-      return stringifyLiteralString(value)
-    case 'integer':
-      return stringifyInteger(value)
-    case 'float':
-      return stringifyFloat(value)
-    case 'boolean':
-      return stringifyBoolean(value)
-    case 'datetime':
-      return stringifyDatetime(value)
-    case 'array':
-      // @ts-ignore
-      return stringifyInlineArray(value.filter(_ => tomlType(_) !== 'null' && tomlType(_) !== 'undefined' && tomlType(_) !== 'nan'))
-    case 'table':
-      return stringifyInlineTable(value)
-    /* istanbul ignore next */
-    default:
-      throw typeError(type)
-  }
-}
-
-function stringifyInteger (value) {
-  /* eslint-disable security/detect-unsafe-regex */
-  return String(value).replace(/\B(?=(\d{3})+(?!\d))/g, '_')
-}
-
-function stringifyFloat (value) {
-  if (value === Infinity) {
-    return 'inf'
-  } else if (value === -Infinity) {
-    return '-inf'
-  } else if (Object.is(value, NaN)) {
-    return 'nan'
-  } else if (Object.is(value, -0)) {
-    return '-0.0'
-  }
-  const [int, dec] = String(value).split('.')
-  return stringifyInteger(int) + '.' + dec
-}
-
-function stringifyBoolean (value) {
-  return String(value)
-}
-
-function stringifyDatetime (value) {
-  return value.toISOString()
-}
-
-function stringifyInlineArray (values) {
-  values = toJSON(values)
-  let result = '['
-  const stringified = values.map(_ => stringifyInline(_))
-  if (stringified.join(', ').length > 60 || /\n/.test(stringified)) {
-    result += '\n  ' + stringified.join(',\n  ') + '\n'
-  } else {
-    result += ' ' + stringified.join(', ') + (stringified.length > 0 ? ' ' : '')
-  }
-  return result + ']'
-}
-
-function stringifyInlineTable (value) {
-  value = toJSON(value)
-  const result = []
-  Object.keys(value).forEach(key => {
-    result.push(stringifyKey(key) + ' = ' + stringifyAnyInline(value[key], false))
-  })
-  return '{ ' + result.join(', ') + (result.length > 0 ? ' ' : '') + '}'
-}
-
-function stringifyComplex (prefix, indent, key, value) {
-  const valueType = tomlType(value)
-  /* istanbul ignore else */
-  if (valueType === 'array') {
-    return stringifyArrayOfTables(prefix, indent, key, value)
-  } else if (valueType === 'table') {
-    return stringifyComplexTable(prefix, indent, key, value)
-  } else {
-    throw typeError(valueType)
-  }
-}
-
-function stringifyArrayOfTables (prefix, indent, key, values) {
-  values = toJSON(values)
-  const firstValueType = tomlType(values[0])
-  /* istanbul ignore if */
-  if (firstValueType !== 'table') throw typeError(firstValueType)
-  const fullKey = prefix + stringifyKey(key)
-  let result = ''
-  values.forEach(table => {
-    if (result.length > 0) result += '\n'
-    result += indent + '[[' + fullKey + ']]\n'
-    result += stringifyObject(fullKey + '.', indent, table)
-  })
-  return result
-}
-
-function stringifyComplexTable (prefix, indent, key, value) {
-  const fullKey = prefix + stringifyKey(key)
-  let result = ''
-  if (getInlineKeys(value).length > 0) {
-    result += indent + '[' + fullKey + ']\n'
-  }
-  return result + stringifyObject(fullKey + '.', indent, value)
+  return resultString.filter(Boolean).join('') + EOL;
 }

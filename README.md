@@ -64,13 +64,13 @@ To use the module:
 
     1.  Run the module outside of the directory containing the target npmrc file
 
-        `$ npx bun-google-artifactregistry-auth --repo-config=[./.npmrc] --bunfig=[./bunfig.toml]`
+        `$ npx -y @tkow/bun-google-artifactregistry-auth --repo-config=[./.npmrc] --bunfig=[$HOME/.bunfig.toml]`
 
     2.  Include the command in the scripts in package.json
 
         ```
         "scripts": {
-            "artifactregistry-login": "npx bun-google-artifactregistry-auth --repo-config=[./.npmrc] --bunfig=[./bunfig.toml]",
+            "artifactregistry-login": "npx -y @tkow/bun-google-artifactregistry-auth(add if you change paths: --repo-config=[./.npmrc] --bunfig=[./bunfig.toml])",
         }
         ```
 
@@ -88,7 +88,7 @@ To use the module:
         Install the module from npmjs.com as a dev dependency and include the
         command in the script
 
-        `$ npm install google-artifactregistry-auth --save-dev`
+        `$ npm install @tkow/bun-google-artifactregistry-auth --save-dev`
 
         ```
         "scripts": {
