@@ -183,7 +183,7 @@ async function generateBunfigFile(npmrcFile, from, bunfigPath, creds) {
 
   bunfigPath = path.resolve(bunfigPath);
   const outString = stringifyToToml(bunfigOutObj);
-  console.log(outString);
+
   // @ts-ignore
   await fs.promises.writeFile(bunfigPath, outString);
 }
