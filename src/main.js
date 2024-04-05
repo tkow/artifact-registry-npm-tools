@@ -46,7 +46,7 @@ const path = require('path');
  */
 async function main() {
   try {
-    const defaultBunfigToml = `${os.homedir()}/.bunfig.toml`
+    const defaultBunfigToml = path.resolve(os.homedir(), ".bunfig.toml")
     // @ts-ignore
     const allArgs = await  yargs(hideBin(process.argv))
       .option('repo-config', {
@@ -76,9 +76,9 @@ async function main() {
       allArgs.bunfig,
       creds,
     );
-    console.log("Success!");
+    logger.log("Success!");
   } catch (err) {
-    console.error(err);
+    logger.error(err);
     // @ts-ignore
     process.exit(1);
   }
