@@ -1,0 +1,9 @@
+
+preload = ["./preload.ts"]
+[test]
+coverage = false
+[install]
+# set default registry as a string
+registry = { url = "https://registry.npmjs.org", token = "123456" }
+[install.scopes]
+"@bar" = { url = "https://asia-northeast1-npm.pkg.dev/foo-bar/fixture-repository/", token = "abcd" }

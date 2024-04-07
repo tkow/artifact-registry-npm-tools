@@ -20,6 +20,7 @@ describe('#config', function() {
   const tests = [
     {name: 'registry', config: 'myregistry.someProperty=someValue'},
     {name: 'auth token', config: '//us-west1-npm.pkg.dev/myproj/myrepo/:_authToken=myToken'},
+    {name: 'auth', config: `_auth=${Buffer.from('user:password', 'utf-8').toString('base64')}`},
     {name: 'password', config: '//us-west1-npm.pkg.dev/myproj/myrepo/:_password=myPassword'},
     {name: 'registry', config: 'registry=https://us-west1-npm.pkg.dev/myproj/myrepo/'},
     {name: 'scoped registry', config: '@myscope:registry=https://us-west1-npm.pkg.dev/myproj/myrepo/'}

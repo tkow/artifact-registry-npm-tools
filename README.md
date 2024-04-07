@@ -1,7 +1,9 @@
 # Artifact Registry tools for npm packages
 
 This repository contains tools to simplify the process of working with npm
-packages using Artifact Registry.
+packages using Artifact Registry and bun.
+
+This library is inherited from https://github.com/GoogleCloudPlatform/artifact-registry-npm-tools.
 
 # Artifact Registry Module
 
@@ -25,19 +27,19 @@ in npmrc file.
 To use the module:
 
 1.  Log in
-    
+
     Option 1: log in as a service account:
 
     (1). Using a JSON file that contains a service account key:
 
            `$ export GOOGLE_APPLICATION_CREDENTIALS=[path/to/key.json]`
-    
+
     (2). Or using gcloud:
 
-           `$ gcloud auth application-default login` 
-    
+           `$ gcloud auth application-default login`
+
     Option 2: log in as an end user via gcloud:
-    
+
        `$ gcloud auth login`
 
 2.  Add settings to connect to the repository to .npmrc. Use the output from the
@@ -62,20 +64,21 @@ To use the module:
 
     1.  Run the module outside of the directory containing the target npmrc file
 
-        `$ npx google-artifactregistry-auth --repo-config=[./.npmrc] --credential-config=[~/.npmrc]`
+        `$ npx -y @tkow/bun-google-artifactregistry-auth --repo-config=[./.npmrc] --bunfig=[$HOME/.bunfig.toml]`
 
     2.  Include the command in the scripts in package.json
 
         ```
         "scripts": {
-            "artifactregistry-login": "npx google-artifactregistry-auth --repo-config=[./.npmrc] --credential-config=[~/.npmrc]",
+            "artifactregistry-login": "npx -y @tkow/bun-google-artifactregistry-auth(add if you change paths: --repo-config=[./.npmrc] --bunfig=[$HOME/.bunfig.toml] --bunfig=[$HOME/.bunfig.toml])",
         }
         ```
-        
+
         Where:
-        - `--repo-config` is the `.npmrc` file with your repository settings. If you don't specify this flag, 
+        - `--repo-config` is the `.npmrc` file with your repository settings. If you don't specify this flag,
         the default location is the current directory.
-        - `--credential-config` is the path to the `.npmrc` file where you want to write the access token. The default is your user `.npmrc` file.
+        - `--bunfig` is the path to the `bunfig.toml` file where you want to write the access token. The default is your home `$HOME/.bunfig.toml` file.
+        - `--from` is the path to the `bunfig.toml` file where you want to make it  base bunfig file. The default is your user `$HOME/.bunfig.toml` file.
 
         And then run the script
 
@@ -86,11 +89,11 @@ To use the module:
         Install the module from npmjs.com as a dev dependency and include the
         command in the script
 
-        `$ npm install google-artifactregistry-auth --save-dev`
+        `$ npm install @tkow/bun-google-artifactregistry-auth --save-dev`
 
         ```
         "scripts": {
-            "artifactregistry-login": "./node_modules/.bin/artifactregistry-auth --repo-config=[./.npmrc] --credential-config=[~/.npmrc]",
+            "artifactregistry-login": "./node_modules/.bin/bun-artifactregistry-auth --repo-config=[./.npmrc] --bunfig=[./bunfig.toml]",
         }
         ```
 
