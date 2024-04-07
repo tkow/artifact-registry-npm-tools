@@ -70,14 +70,15 @@ To use the module:
 
         ```
         "scripts": {
-            "artifactregistry-login": "npx -y @tkow/bun-google-artifactregistry-auth(add if you change paths: --repo-config=[./.npmrc] --bunfig=[./bunfig.toml])",
+            "artifactregistry-login": "npx -y @tkow/bun-google-artifactregistry-auth(add if you change paths: --repo-config=[./.npmrc] --bunfig=[$HOME/.bunfig.toml] --bunfig=[$HOME/.bunfig.toml])",
         }
         ```
 
         Where:
         - `--repo-config` is the `.npmrc` file with your repository settings. If you don't specify this flag,
         the default location is the current directory.
-        - `--bunfig` is the path to the `bunfig.toml` file where you want to write the access token. The default is your user `bunfig.toml` file.
+        - `--bunfig` is the path to the `bunfig.toml` file where you want to write the access token. The default is your home `$HOME/.bunfig.toml` file.
+        - `--from` is the path to the `bunfig.toml` file where you want to make it  base bunfig file. The default is your user `$HOME/.bunfig.toml` file.
 
         And then run the script
 
@@ -92,7 +93,7 @@ To use the module:
 
         ```
         "scripts": {
-            "artifactregistry-login": "./node_modules/.bin/artifactregistry-auth --repo-config=[./.npmrc] --bunfig=[./bunfig.toml]",
+            "artifactregistry-login": "./node_modules/.bin/bun-artifactregistry-auth --repo-config=[./.npmrc] --bunfig=[./bunfig.toml]",
         }
         ```
 
