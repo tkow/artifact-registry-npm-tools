@@ -130,7 +130,7 @@ function parseLine(line, cache) {
     }
     // @ts-ignore
     cache[config.scope] = Object.assign(cache[config.scope], config);
-  } else {
+  } else if (Object.keys(config).length > 0){
     if (!cache[BUN_REGISTRY_KEY]) {
       // @ts-ignore
       cache[BUN_REGISTRY_KEY] = {};
