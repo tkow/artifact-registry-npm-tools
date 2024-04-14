@@ -3,7 +3,7 @@
 This repository contains tools to simplify the process of working with npm
 packages using Artifact Registry and bun.
 
-This library is inherited from https://github.com/GoogleCloudPlatform/artifact-registry-npm-tools.
+This library inherits from https://github.com/GoogleCloudPlatform/artifact-registry-npm-tools.
 
 # Artifact Registry Module
 
