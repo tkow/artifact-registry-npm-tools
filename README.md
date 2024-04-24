@@ -70,7 +70,7 @@ To use the module:
 
         ```
         "scripts": {
-            "artifactregistry-login": "npx -y @tkow/bun-google-artifactregistry-auth(add if you change paths: --repo-config=[./.npmrc] --bunfig=[$HOME/.bunfig.toml] --bunfig=[$HOME/.bunfig.toml])",
+            "artifactregistry-login": "npx -y @tkow/bun-google-artifactregistry-auth(add if you change paths: --repo-config=[./.npmrc] --bunfig=[$HOME/.bunfig.toml] --from=[$HOME/.bunfig.toml])",
         }
         ```
 
